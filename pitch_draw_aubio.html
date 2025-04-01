@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8">
-  <title>实时音高图表 (Aubiojs 版本)</title>
+  <title>实时音高图表 (使用 AudioWorklet)</title>
   <style>
     body {
       background: #f0f0f0;
@@ -34,7 +34,7 @@
   <script src="https://unpkg.com/aubiojs"></script>
 </head>
 <body>
-  <h1>实时音高图表 (Aubiojs 版本)</h1>
+  <h1>实时音高图表 (使用 AudioWorklet)</h1>
   <p>请允许麦克风访问。此版本减少了图表整体抖动。</p>
   <div id="container">
     <!-- Dynamic grid canvas -->
@@ -154,9 +154,7 @@
     }
 
     // Audio processing variables
-    let audioContext, mediaStreamSource, scriptProcessor;
-    // Buffer size for ScriptProcessorNode
-    const bufferSize = 1 << 12; // 4096
+    let audioContext, mediaStreamSource;
     // Global aubiojs pitch detector instance
     let pitchDetector = null;
     // Latest detected frequency from aubiojs
@@ -215,37 +213,61 @@
       drawGraph(pitchHistory, windowMinMidi, windowMaxMidi);
     }
 
-    // Initialize audio stream and aubiojs pitch detector
+    // Initialize audio stream, AudioWorklet and aubiojs pitch detector
     async function init() {
       try {
         // Request microphone access
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
         mediaStreamSource = audioContext.createMediaStreamSource(stream);
-        // Create ScriptProcessorNode for audio processing
-        scriptProcessor = audioContext.createScriptProcessor(bufferSize, 1, 1);
-        mediaStreamSource.connect(scriptProcessor);
-        // Connect to destination (speakers) if needed; here we connect to avoid audio interruption
-        scriptProcessor.connect(audioContext.destination);
 
-        // Initialize aubiojs Pitch detector
+        // Load the AudioWorklet module
+        await audioContext.audioWorklet.addModule('pitch-processor.js');
+
+        // Create an AudioWorkletNode for pitch processing
+        const workletNode = new AudioWorkletNode(audioContext, 'pitch-processor');
+        // Connect the audio nodes
+        mediaStreamSource.connect(workletNode);
+        // Connect workletNode to destination to keep the processing chain alive
+        workletNode.connect(audioContext.destination);
+
+        // Initialize aubiojs Pitch detector with a buffer size of 4096 samples
         aubio().then(({ Pitch }) => {
-          // Create pitch detector with method "fcomb"
-          pitchDetector = new Pitch("fcomb", scriptProcessor.bufferSize * 4, scriptProcessor.bufferSize, audioContext.sampleRate);
-          // Set up audio processing callback
-          scriptProcessor.addEventListener("audioprocess", function(event) {
-            // Get audio data from input buffer
-            const data = event.inputBuffer.getChannelData(0);
-            // Use aubiojs pitch detector to compute frequency
-            const frequency = pitchDetector.do(data);
-            // Update latestFrequency global variable
+          // The second parameter is the FFT size multiplier (here 4096*4)
+          pitchDetector = new Pitch("fcomb", 4096 * 4, 4096, audioContext.sampleRate);
+        });
+
+        // Accumulator for audio data to match the expected buffer size
+        let audioBufferAccumulator = new Float32Array(4096);
+        let accumulatorIndex = 0;
+
+        // Setup message handler to receive audio data from AudioWorkletProcessor
+        workletNode.port.onmessage = (event) => {
+          // event.data is a Float32Array of audio samples (typically 128 samples per process call)
+          let samples = event.data;
+          // Append samples to accumulator
+          if (accumulatorIndex + samples.length <= 4096) {
+            audioBufferAccumulator.set(samples, accumulatorIndex);
+            accumulatorIndex += samples.length;
+          } else {
+            // If overflow, fill up the accumulator
+            let remaining = 4096 - accumulatorIndex;
+            audioBufferAccumulator.set(samples.slice(0, remaining), accumulatorIndex);
+            accumulatorIndex = 4096;
+          }
+
+          // When we have enough samples, perform pitch detection
+          if (accumulatorIndex >= 4096 && pitchDetector) {
+            const frequency = pitchDetector.do(audioBufferAccumulator);
             if (frequency > 0) {
               latestFrequency = frequency;
             } else {
               latestFrequency = null;
             }
-          });
-        });
+            // Reset accumulator index for next block
+            accumulatorIndex = 0;
+          }
+        };
 
         // Start the drawing loop
         update();
