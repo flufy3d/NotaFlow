@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>实时音高图表 (Aubiojs 版本)</title>
+  <style>
+    body {
+      background: #f0f0f0;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    /* Center container by fixed width and auto margin */
+    #container {
+      position: relative;
+      width: 800px; /* Adjust the width as needed */
+      height: 600px; /* Adjust the height as needed */
+      margin: 40px auto; /* Center horizontally */
+      border: 1px solid #000;
+      background: #fff;
+      overflow: hidden; /* Prevents minor rendering glitches at edges */
+    }
+    /* Overlapping canvases */
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+    h1, p {
+      text-align: center;
+    }
+  </style>
+  <!-- Load aubiojs from CDN -->
+  <script src="https://unpkg.com/aubiojs"></script>
+</head>
+<body>
+  <h1>实时音高图表 (Aubiojs 版本)</h1>
+  <p>请允许麦克风访问。此版本减少了图表整体抖动。</p>
+  <div id="container">
+    <!-- Dynamic grid canvas -->
+    <canvas id="grid" width="800" height="600"></canvas>
+    <!-- Dynamic graph canvas -->
+    <canvas id="graph" width="800" height="600"></canvas>
+  </div>
+
+  <script>
+    // Get canvas elements and contexts
+    const gridCanvas = document.getElementById('grid');
+    const gridCtx = gridCanvas.getContext('2d');
+    const graphCanvas = document.getElementById('graph');
+    const graphCtx = graphCanvas.getContext('2d');
+    const canvasWidth = graphCanvas.width;
+    const canvasHeight = graphCanvas.height;
+
+    // Define full MIDI range from A0 to C8
+    const fullMinMidi = 21;   // A0
+    const fullMaxMidi = 108;  // C8
+    // Number of octaves to display in dynamic window
+    const displayOctaves = 3;
+    const displayRange = displayOctaves * 12; // semitones
+
+    // History array to store pitch (MIDI value) for each x-pixel
+    let pitchHistory = new Array(canvasWidth).fill(null);
+
+    // Note names array for labeling
+    const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+
+    // Draw dynamic grid according to current window (windowMinMidi to windowMaxMidi)
+    function drawDynamicGrid(windowMinMidi, windowMaxMidi) {
+      // Clear the grid canvas
+      gridCtx.clearRect(0, 0, canvasWidth, canvasHeight);
+      // Determine integer boundaries for grid lines
+      const startMidi = Math.floor(windowMinMidi);
+      const endMidi = Math.ceil(windowMaxMidi);
+
+      // --- Grid Drawing Optimization: Draw background stripes first ---
+      for (let midi = startMidi; midi <= endMidi; midi++) {
+         let y = canvasHeight - ((midi - windowMinMidi) / (windowMaxMidi - windowMinMidi)) * canvasHeight;
+         let nextMidi = midi + 1;
+         let nextY = canvasHeight - ((nextMidi - windowMinMidi) / (windowMaxMidi - windowMinMidi)) * canvasHeight;
+         // Ensure valid height for the rectangle
+         if (y > nextY) {
+            gridCtx.fillStyle = (midi % 2 === 0) ? '#f9f9f9' : '#ffffff';
+            gridCtx.fillRect(0, nextY, canvasWidth, y - nextY);
+         }
+      }
+      // --- Then draw lines and text ---
+      for (let midi = startMidi; midi <= endMidi; midi++) {
+         let y = canvasHeight - ((midi - windowMinMidi) / (windowMaxMidi - windowMinMidi)) * canvasHeight;
+         // Draw horizontal grid line
+         gridCtx.beginPath();
+         gridCtx.moveTo(0, y);
+         gridCtx.lineTo(canvasWidth, y);
+         gridCtx.strokeStyle = '#ccc';
+         gridCtx.lineWidth = 1;
+         gridCtx.stroke();
+         // Label natural notes (skip sharps)
+         let noteIndex = midi % 12;
+         let octave = Math.floor(midi / 12) - 1; // A0 is MIDI 21, C1 is 24.
+         let noteName = noteNames[noteIndex];
+         // Only label natural notes (C, D, E, F, G, A, B)
+         if (noteName.indexOf('#') === -1) {
+             gridCtx.fillStyle = 'black';
+             gridCtx.font = '12px Arial';
+             // Adjust text position slightly for better readability
+             gridCtx.textAlign = 'left';
+             gridCtx.fillText(noteName + octave, 5, y - 3);
+         }
+      }
+    }
+
+    // Convert frequency to MIDI note (floating point)
+    function frequencyToMidi(frequency) {
+      if (frequency <= 0) return null; // Avoid Math.log2(non-positive)
+      return 69 + 12 * Math.log2(frequency / 440);
+    }
+
+    // Draw graph using stored pitchHistory with current dynamic window mapping
+    function drawGraph(pitchHistory, windowMinMidi, windowMaxMidi) {
+      // Clear the graph canvas
+      graphCtx.clearRect(0, 0, canvasWidth, canvasHeight);
+      graphCtx.beginPath();
+      let started = false;
+      for (let i = 0; i < pitchHistory.length; i++) {
+        let midi = pitchHistory[i];
+        let x = canvasWidth - pitchHistory.length + i; // Draw from right to left
+
+        // Skip if pitch not detected (null)
+        if (midi === null) {
+          if (started) {
+            graphCtx.stroke(); // End the current line segment
+            started = false;
+          }
+          continue;
+        }
+
+        // Map MIDI value to y-coordinate based on dynamic window
+        // Clamp y-coordinate to canvas boundaries to avoid drawing outside
+        let y = canvasHeight - ((midi - windowMinMidi) / (windowMaxMidi - windowMinMidi)) * canvasHeight;
+        y = Math.max(0, Math.min(canvasHeight, y)); // Clamp y
+
+        if (!started) {
+          graphCtx.moveTo(x, y);
+          started = true;
+        } else {
+          graphCtx.lineTo(x, y);
+        }
+      }
+      if (started) {
+        graphCtx.strokeStyle = 'red';
+        graphCtx.lineWidth = 2;
+        graphCtx.stroke(); // Draw the last segment if any
+      }
+    }
+
+    // Audio processing variables
+    let audioContext, mediaStreamSource, scriptProcessor;
+    // Buffer size for ScriptProcessorNode
+    const bufferSize = 1 << 12; // 4096
+    // Global aubiojs pitch detector instance
+    let pitchDetector = null;
+    // Latest detected frequency from aubiojs
+    let latestFrequency = null;
+
+    // --- State Variables for Smoothing ---
+    // Smoothed frequency for the actual line drawing (smoother line)
+    let pitchSmoothed = 0;
+    const PITCH_SMOOTHING_FACTOR = 0.85; // Smoothing factor for pitch (frequency)
+
+    // VERY smoothed pitch used ONLY for calculating the Y-axis center (much slower update)
+    let axisCenterMidiSmoothed = (fullMinMidi + fullMaxMidi) / 2; // Start in the middle
+    const AXIS_SMOOTHING_FACTOR = 0.99; // Smoothing factor for axis center
+
+    // Main drawing loop: update dynamic window, grid and graph
+    function update() {
+      requestAnimationFrame(update);
+
+      let currentMidi = null;
+      if (latestFrequency !== null && latestFrequency > 0) {
+        // Smooth the detected frequency
+        if (pitchSmoothed === 0) {
+          pitchSmoothed = latestFrequency;
+        } else {
+          pitchSmoothed = pitchSmoothed * PITCH_SMOOTHING_FACTOR + latestFrequency * (1 - PITCH_SMOOTHING_FACTOR);
+        }
+        currentMidi = frequencyToMidi(pitchSmoothed);
+
+        // Update very smoothed axis center using current MIDI
+        if (currentMidi !== null) {
+          axisCenterMidiSmoothed = axisCenterMidiSmoothed * AXIS_SMOOTHING_FACTOR + currentMidi * (1 - AXIS_SMOOTHING_FACTOR);
+        }
+      }
+
+      // Update pitch history array
+      pitchHistory.push(currentMidi);
+      if (pitchHistory.length > canvasWidth) {
+        pitchHistory.shift();
+      }
+
+      // Compute dynamic window boundaries based on the slowly changing center
+      let windowMinMidi = axisCenterMidiSmoothed - displayRange / 2;
+      let windowMaxMidi = axisCenterMidiSmoothed + displayRange / 2;
+
+      // Clamp the dynamic window within full range
+      if (windowMinMidi < fullMinMidi) {
+        windowMinMidi = fullMinMidi;
+        windowMaxMidi = fullMinMidi + displayRange;
+      } else if (windowMaxMidi > fullMaxMidi) {
+        windowMaxMidi = fullMaxMidi;
+        windowMinMidi = fullMaxMidi - displayRange;
+      }
+
+      // Redraw the grid and graph with the current dynamic window
+      drawDynamicGrid(windowMinMidi, windowMaxMidi);
+      drawGraph(pitchHistory, windowMinMidi, windowMaxMidi);
+    }
+
+    // Initialize audio stream and aubiojs pitch detector
+    async function init() {
+      try {
+        // Request microphone access
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        mediaStreamSource = audioContext.createMediaStreamSource(stream);
+        // Create ScriptProcessorNode for audio processing
+        scriptProcessor = audioContext.createScriptProcessor(bufferSize, 1, 1);
+        mediaStreamSource.connect(scriptProcessor);
+        // Connect to destination (speakers) if needed; here we connect to avoid audio interruption
+        scriptProcessor.connect(audioContext.destination);
+
+        // Initialize aubiojs Pitch detector
+        aubio().then(({ Pitch }) => {
+          // Create pitch detector with method "fcomb"
+          pitchDetector = new Pitch("fcomb", scriptProcessor.bufferSize * 4, scriptProcessor.bufferSize, audioContext.sampleRate);
+          // Set up audio processing callback
+          scriptProcessor.addEventListener("audioprocess", function(event) {
+            // Get audio data from input buffer
+            const data = event.inputBuffer.getChannelData(0);
+            // Use aubiojs pitch detector to compute frequency
+            const frequency = pitchDetector.do(data);
+            // Update latestFrequency global variable
+            if (frequency > 0) {
+              latestFrequency = frequency;
+            } else {
+              latestFrequency = null;
+            }
+          });
+        });
+
+        // Start the drawing loop
+        update();
+
+      } catch (e) {
+        console.error('Error accessing audio stream:', e);
+        alert('无法访问麦克风，请检查权限设置 (Error: ' + e.message + ')');
+      }
+    }
+
+    window.addEventListener('load', init);
+  </script>
+</body>
+</html>
