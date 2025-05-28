@@ -328,8 +328,8 @@
   display: flex;
   flex-direction: column;
   align-items: center; /* 水平居中子元素 */
-  justify-content: center; /* 垂直居中子元素块 */
-  padding: 20px;
+  justify-content: flex-start; /* 从顶部开始排列 */
+  padding: 10px 20px; /* 减少上下padding */
   background: #f0f0f0;
   font-family: Arial, sans-serif;
   min-height: 100vh;
@@ -369,8 +369,8 @@ canvas {
 
 h1 {
   text-align: center; /* 文本在其块内居中 */
-  margin-bottom: 10px;
-  font-size: 1.5em; /* Responsive font size */
+  margin: 5px 0; /* 减少上下margin */
+  font-size: 1.3em; /* 稍微减小字体大小 */
 }
 @media (max-width: 450px) {
   h1 {
