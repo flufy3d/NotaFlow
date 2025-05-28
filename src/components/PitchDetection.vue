@@ -322,95 +322,100 @@
   
   </script>
   
+
   <style scoped>
-  .pitch-detection-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 20px;
-    background: #f0f0f0;
-    font-family: Arial, sans-serif;
-    min-height: 100vh;
-    box-sizing: border-box; /* Ensure padding doesn't add to width for full-width elements */
-  }
+.pitch-detection-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* 水平居中子元素 */
+  justify-content: center; /* 垂直居中子元素块 */
+  padding: 20px;
+  background: #f0f0f0;
+  font-family: Arial, sans-serif;
+  min-height: 100vh;
+  width: 100%; /* 确保容器占据全部可用宽度 */
+  box-sizing: border-box; /* 确保 padding 不会增加总宽度 */
+}
+
+/* **** MODIFIED CSS for #container **** */
+#container {
+  position: relative;
+  /* Make it responsive: take up most of viewport width on mobile, up to a max on desktop */
+  width: 90vw; /* 90% of viewport width */
+  max-width: 300px; /* Maximum width it can take (original canvas width) */
   
-  /* **** MODIFIED CSS for #container **** */
-  #container {
-    position: relative;
-    /* Make it responsive: take up most of viewport width on mobile, up to a max on desktop */
-    width: 90vw; /* 90% of viewport width */
-    max-width: 300px; /* Maximum width it can take (original canvas width) */
-    
-    /* Maintain aspect ratio of the drawing buffer (e.g., 300/450 = 4/3) */
-    /* aspect-ratio: calc(v-bind(canvasWidth) / v-bind(canvasHeight)); */ /* Vue 3.2+ CSS v-bind */
-    aspect-ratio: 300 / 450; /* Hardcode if v-bind not available or preferred */
-  
-    margin: 20px auto;
-    border: 1px solid #000;
-    background: #fff;
-    overflow: hidden; 
-  }
-  
-  /* **** MODIFIED CSS for canvas **** */
-  canvas {
-    position: absolute;
-    top: 0;
-    left: 0;
-    /* Make canvas fill its responsive parent container */
-    width: 100%;
-    height: 100%;
-    display: block; 
-  }
-  
+  /* Maintain aspect ratio of the drawing buffer (e.g., 300/450 = 4/3) */
+  /* aspect-ratio: calc(v-bind(canvasWidth) / v-bind(canvasHeight)); */ /* Vue 3.2+ CSS v-bind */
+  aspect-ratio: 300 / 450; /* Hardcode if v-bind not available or preferred */
+
+  margin: 20px 0; /* 上下边距20px, 水平边距由父flex容器的align-items控制 */
+                 /* 如果需要强制使用 margin: auto 来水平居中，可以保留 margin: 20px auto; */
+                 /* 但在flex子项中，align-items: center 通常足够 */
+  border: 1px solid #000;
+  background: #fff;
+  overflow: hidden; 
+}
+
+/* **** MODIFIED CSS for canvas **** */
+canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  /* Make canvas fill its responsive parent container */
+  width: 100%;
+  height: 100%;
+  display: block; 
+}
+
+h1 {
+  text-align: center; /* 文本在其块内居中 */
+  margin-bottom: 10px;
+  font-size: 1.5em; /* Responsive font size */
+}
+@media (max-width: 450px) {
   h1 {
-    text-align: center;
-    margin-bottom: 10px;
-    font-size: 1.5em; /* Responsive font size */
+    font-size: 1.2em;
   }
-  @media (max-width: 450px) {
-    h1 {
-      font-size: 1.2em;
-    }
-  }
-  
+}
+
+p {
+  text-align: center; /* 文本在其块内居中 */
+  margin-top: 5px;
+  margin-bottom: 15px;
+  max-width: 90vw; /* Ensure text also wraps nicely */
+  font-size: 1em;
+}
+@media (max-width: 450px) {
   p {
-    text-align: center;
-    margin-top: 5px;
-    margin-bottom: 15px;
-    max-width: 90vw; /* Ensure text also wraps nicely */
-    font-size: 1em;
+    font-size: 0.9em;
   }
-  @media (max-width: 450px) {
-    p {
-      font-size: 0.9em;
-    }
-  }
-  .error-message {
-    color: red;
-    font-weight: bold;
-  }
+}
+.error-message {
+  color: red;
+  font-weight: bold;
+}
+button {
+  margin-top: 5px;
+  padding: 10px 15px; /* Slightly smaller padding for mobile */
+  font-size: 1em; /* Responsive font size */
+  cursor: pointer;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  transition: background-color 0.2s ease-in-out;
+}
+@media (max-width: 450px) {
   button {
-    margin-top: 5px;
-    padding: 10px 15px; /* Slightly smaller padding for mobile */
-    font-size: 1em; /* Responsive font size */
-    cursor: pointer;
-    background-color: #4CAF50;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    transition: background-color 0.2s ease-in-out;
+    padding: 8px 12px;
+    font-size: 0.9em;
   }
-  @media (max-width: 450px) {
-    button {
-      padding: 8px 12px;
-      font-size: 0.9em;
-    }
-  }
-  button:hover {
-    background-color: #45a049;
-  }
-  button:disabled {
-    background-color: #ccc;
-    cursor: not-allowed;
-  }
-  </style>
+}
+button:hover {
+  background-color: #45a049;
+}
+button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+</style>
