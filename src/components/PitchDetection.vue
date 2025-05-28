@@ -7,8 +7,9 @@
       <p v-else-if="!isMicrophoneAllowed && attemptedInitialization">麦克风访问被拒绝或失败。请检查浏览器权限并重试。</p>
       <p v-else>{{ isProcessingAudio ? '正在检测音高...' : '检测已暂停。' }} 此版本旨在减少图表抖动。</p>
       
-      <!-- **** MODIFICATION HERE: Bind style for width and height **** -->
-      <div id="container" ref="chartContainerRef" :style="{ width: canvasWidth + 'px', height: canvasHeight + 'px' }">
+      <!-- **** MODIFICATION HERE: Removed inline style for width/height **** -->
+      <div id="container" ref="chartContainerRef"> 
+        <!-- Canvas elements' width/height attributes define their drawing buffer size -->
         <canvas id="grid" ref="gridCanvasRef" :width="canvasWidth" :height="canvasHeight"></canvas>
         <canvas id="graph" ref="graphCanvasRef" :width="canvasWidth" :height="canvasHeight"></canvas>
       </div>
@@ -19,7 +20,6 @@
        <p v-if="isMicrophoneAllowed && !isProcessingAudio && attemptedInitialization && !initializationError" style="font-size: 0.9em; margin-top: 5px;">
           点击“{{ buttonText }}”开始。
       </p>
-  
     </div>
   </template>
   
@@ -27,25 +27,27 @@
   import { ref, onMounted, onUnmounted, nextTick, computed } from 'vue';
   import AubioModule, { Pitch } from 'aubiojs';
   
+  // --- Refs for DOM Elements ---
   const gridCanvasRef = ref<HTMLCanvasElement | null>(null);
   const graphCanvasRef = ref<HTMLCanvasElement | null>(null);
-  const chartContainerRef = ref<HTMLDivElement | null>(null); // Keep if needed for other manipulations
+  const chartContainerRef = ref<HTMLDivElement | null>(null);
   
-  const canvasWidth = ref(800);
-  const canvasHeight = ref(600);
+  // --- Canvas Dimensions for DRAWING BUFFER (not display size) ---
+  const canvasWidth = ref(300); // Keep this as the internal resolution
+  const canvasHeight = ref(450); // Keep this as the internal resolution
   
-  let gridCtx: CanvasRenderingContext2D | null = null;
-  let graphCtx: CanvasRenderingContext2D | null = null;
+  // ... (rest of your <script setup> remains largely the same) ...
+  // Make sure pitchHistory is initialized with canvasWidth.value
+  const pitchHistory = ref<Array<number | null>>(new Array(canvasWidth.value).fill(null));
   
+  // --- Constants & State (no changes needed here related to responsiveness) ---
   const fullMinMidi = 21;
   const fullMaxMidi = 108;
   const displayOctaves = 3;
   const displayRange = displayOctaves * 12;
   const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
   
-  const pitchHistory = ref<Array<number | null>>(new Array(canvasWidth.value).fill(null));
   const latestFrequency = ref<number | null>(null);
-  
   const pitchSmoothed = ref<number>(0);
   const PITCH_SMOOTHING_FACTOR = 0.85;
   const axisCenterMidiSmoothed = ref<number>((fullMinMidi + fullMaxMidi) / 2);
@@ -63,7 +65,11 @@
   const isMicrophoneAllowed = ref(false);
   const initializationError = ref<string | null>(null);
   const isProcessingAudio = ref(false);
-  const attemptedInitialization = ref(false); // To track if user tried to init
+  const attemptedInitialization = ref(false);
+  
+  let gridCtx: CanvasRenderingContext2D | null = null;
+  let graphCtx: CanvasRenderingContext2D | null = null;
+  
   
   const buttonText = computed(() => {
     if (!attemptedInitialization.value && !isMicrophoneAllowed.value) return '开始检测 (需要麦克风)';
@@ -78,6 +84,7 @@
   
   function drawDynamicGrid(windowMinMidi: number, windowMaxMidi: number) {
     if (!gridCtx) return;
+    // canvasWidth.value and canvasHeight.value are the drawing buffer dimensions
     gridCtx.clearRect(0, 0, canvasWidth.value, canvasHeight.value);
     const startMidi = Math.floor(windowMinMidi);
     const endMidi = Math.ceil(windowMaxMidi);
@@ -87,8 +94,7 @@
       let nextMidi = midi + 1;
       let nextY = canvasHeight.value - ((nextMidi - windowMinMidi) / (windowMaxMidi - windowMinMidi)) * canvasHeight.value;
       if (y > nextY) {
-        gridCtx.fillStyle = (midi % 12 === 1 || midi % 12 === 3 || midi % 12 === 6 || midi % 12 === 8 || midi % 12 === 10) ? '#f0f0f0' : '#ffffff'; // Slightly different shading for black keys areas
-        gridCtx.fillStyle = (midi % 2 === 0) ? '#f9f9f9' : '#ffffff'; // Original logic
+        gridCtx.fillStyle = (midi % 2 === 0) ? '#f9f9f9' : '#ffffff';
         gridCtx.fillRect(0, nextY, canvasWidth.value, y - nextY);
       }
     }
@@ -99,14 +105,14 @@
       gridCtx.moveTo(0, y);
       gridCtx.lineTo(canvasWidth.value, y);
       gridCtx.strokeStyle = '#ccc';
-      gridCtx.lineWidth = 1;
+      gridCtx.lineWidth = 1; // This line thickness will also scale with the CSS
       gridCtx.stroke();
       let noteIndex = midi % 12;
       let octave = Math.floor(midi / 12) - 1;
       let noteName = noteNames[noteIndex];
       if (noteName.indexOf('#') === -1) {
         gridCtx.fillStyle = 'black';
-        gridCtx.font = '12px Arial';
+        gridCtx.font = '12px Arial'; // Font size will also scale
         gridCtx.textAlign = 'left';
         gridCtx.fillText(noteName + octave, 5, y - 3);
       }
@@ -120,7 +126,8 @@
     let started = false;
     for (let i = 0; i < currentPitchHistory.length; i++) {
       let midi = currentPitchHistory[i];
-      let x = canvasWidth.value - currentPitchHistory.length + i;
+      // x is based on the drawing buffer width
+      let x = canvasWidth.value - currentPitchHistory.length + i; 
   
       if (midi === null) {
         if (started) {
@@ -142,13 +149,13 @@
     }
     if (started) {
       graphCtx.strokeStyle = 'red';
-      graphCtx.lineWidth = 2;
+      graphCtx.lineWidth = 2; // This line thickness will also scale
       graphCtx.stroke();
     }
   }
   
   function update() {
-    animationFrameId = requestAnimationFrame(update); // Re-queue at the beginning
+    animationFrameId = requestAnimationFrame(update); 
   
     let currentMidi: number | null = null;
     if (isProcessingAudio.value && latestFrequency.value !== null && latestFrequency.value > 0) {
@@ -163,12 +170,13 @@
         axisCenterMidiSmoothed.value = axisCenterMidiSmoothed.value * AXIS_SMOOTHING_FACTOR + currentMidi * (1 - AXIS_SMOOTHING_FACTOR);
       }
     } else {
-      currentMidi = null; // Ensure line fades if not processing or no frequency
+      currentMidi = null; 
     }
   
     const newHistory = [...pitchHistory.value];
     newHistory.push(currentMidi);
-    if (newHistory.length > canvasWidth.value) {
+    // pitchHistory length is tied to canvasWidth.value (drawing buffer width)
+    if (newHistory.length > canvasWidth.value) { 
       newHistory.shift();
     }
     pitchHistory.value = newHistory;
@@ -190,30 +198,28 @@
   
   async function initAudio() {
     attemptedInitialization.value = true;
-    initializationError.value = null; // Clear previous errors
+    initializationError.value = null; 
   
     if (audioContext && audioContext.state !== 'closed') {
-      // Already initialized or in process, maybe just resume
        if (audioContext.state === 'suspended') {
           await audioContext.resume();
           isProcessingAudio.value = true;
           return;
        }
-       if (isProcessingAudio.value) return; // Already processing
-    } else { // Full initialization needed
+       if (isProcessingAudio.value) return; 
+    } else { 
       try {
         mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
         isMicrophoneAllowed.value = true;
   
         audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
         
-        await audioContext.audioWorklet.addModule('/pitch-processor.js'); // Path from public root
+        await audioContext.audioWorklet.addModule('/pitch-processor.js'); 
         
         mediaStreamSource = audioContext.createMediaStreamSource(mediaStream);
         workletNode = new AudioWorkletNode(audioContext, 'pitch-processor');
         
         mediaStreamSource.connect(workletNode);
-        // workletNode.connect(audioContext.destination); // Not connecting to output
   
         const aubio = await AubioModule();
         pitchDetector = new aubio.Pitch("fcomb", 4096 * 4, 4096, audioContext.sampleRate);
@@ -224,7 +230,6 @@
           if (!isProcessingAudio.value || !audioContext || audioContext.state !== 'running') return;
   
           const samples = event.data as Float32Array;
-          // Buffer accumulation logic (ensure it doesn't process if already full before this message)
           let currentInputPos = 0;
           while(currentInputPos < samples.length) {
               const toCopy = Math.min(samples.length - currentInputPos, 4096 - accumulatorIndex);
@@ -235,7 +240,7 @@
               if (accumulatorIndex >= 4096 && pitchDetector) {
                   const frequency = pitchDetector.do(audioBufferAccumulator);
                   latestFrequency.value = frequency > 0 ? frequency : null;
-                  accumulatorIndex = 0; // Reset for next block
+                  accumulatorIndex = 0; 
               }
           }
         };
@@ -248,35 +253,29 @@
           initializationError.value = `无法初始化音频: ${e.message}`;
         }
         isMicrophoneAllowed.value = false;
-        isProcessingAudio.value = false; // Ensure it's set to false on error
-        return; // Stop if initialization failed
+        isProcessingAudio.value = false; 
+        return; 
       }
     }
-    // If successful or resumed
     isProcessingAudio.value = true;
-    if (audioContext?.state === 'suspended') { // Double check state after potential resume
+    if (audioContext?.state === 'suspended') { 
       await audioContext.resume();
     }
   }
   
   async function handleToggleButtonClick() {
     if (!audioContext || audioContext.state === 'closed' || initializationError.value || !isMicrophoneAllowed.value) {
-      // If not initialized, or error occurred, or mic not allowed (but user clicks button implying intent)
       await initAudio();
-      // initAudio will set isProcessingAudio.value to true if successful
     } else {
-      // Toggle processing state
       isProcessingAudio.value = !isProcessingAudio.value;
       if (isProcessingAudio.value) {
         if (audioContext.state === 'suspended') {
           await audioContext.resume();
         }
-        latestFrequency.value = null; // Reset to avoid stale data jump
+        latestFrequency.value = null; 
         pitchSmoothed.value = 0;
       } else {
         latestFrequency.value = null;
-        // When pausing, audioContext might suspend on its own if no nodes are pulling data.
-        // Or we could explicitly suspend: audioContext.suspend(); but this might be too aggressive.
       }
     }
   }
@@ -287,15 +286,12 @@
       gridCtx = gridCanvasRef.value.getContext('2d');
       graphCtx = graphCanvasRef.value.getContext('2d');
       
-      gridCanvasRef.value.width = canvasWidth.value;
-      gridCanvasRef.value.height = canvasHeight.value;
-      graphCanvasRef.value.width = canvasWidth.value;
-      graphCanvasRef.value.height = canvasHeight.value;
+      // The :width and :height on canvas elements already set their drawing buffer.
+      // CSS will handle their display size.
   
+      // Initialize pitchHistory based on the drawing buffer width
       pitchHistory.value = new Array(canvasWidth.value).fill(null);
   
-      // Start the drawing loop regardless of audio state
-      // It will draw an empty grid/graph if audio isn't active
       if (animationFrameId === null) {
           animationFrameId = requestAnimationFrame(update);
       }
@@ -321,7 +317,7 @@
       audioContext.close().catch(e => console.error("Error closing AudioContext:", e));
     }
     audioContext = null;
-    pitchDetector = null; // Release AubioJS object
+    pitchDetector = null; 
   });
   
   </script>
@@ -334,50 +330,81 @@
     padding: 20px;
     background: #f0f0f0;
     font-family: Arial, sans-serif;
-    min-height: 100vh; /* Ensure it takes full viewport height if content is short */
+    min-height: 100vh;
+    box-sizing: border-box; /* Ensure padding doesn't add to width for full-width elements */
   }
   
-  /* Styles for the container of canvases */
+  /* **** MODIFIED CSS for #container **** */
   #container {
     position: relative;
-    /* width and height are now set by :style binding */
+    /* Make it responsive: take up most of viewport width on mobile, up to a max on desktop */
+    width: 90vw; /* 90% of viewport width */
+    max-width: 300px; /* Maximum width it can take (original canvas width) */
+    
+    /* Maintain aspect ratio of the drawing buffer (e.g., 300/450 = 4/3) */
+    /* aspect-ratio: calc(v-bind(canvasWidth) / v-bind(canvasHeight)); */ /* Vue 3.2+ CSS v-bind */
+    aspect-ratio: 300 / 450; /* Hardcode if v-bind not available or preferred */
+  
     margin: 20px auto;
     border: 1px solid #000;
     background: #fff;
-    overflow: hidden; /* Important to clip canvas if it ever draws outside bounds by mistake */
+    overflow: hidden; 
   }
   
+  /* **** MODIFIED CSS for canvas **** */
   canvas {
     position: absolute;
     top: 0;
     left: 0;
-    display: block; /* Can help avoid minor layout issues with inline canvas */
+    /* Make canvas fill its responsive parent container */
+    width: 100%;
+    height: 100%;
+    display: block; 
   }
   
   h1 {
     text-align: center;
     margin-bottom: 10px;
+    font-size: 1.5em; /* Responsive font size */
   }
+  @media (max-width: 450px) {
+    h1 {
+      font-size: 1.2em;
+    }
+  }
+  
   p {
     text-align: center;
     margin-top: 5px;
     margin-bottom: 15px;
-    max-width: 800px; /* Match canvas width for consistency */
+    max-width: 90vw; /* Ensure text also wraps nicely */
+    font-size: 1em;
+  }
+  @media (max-width: 450px) {
+    p {
+      font-size: 0.9em;
+    }
   }
   .error-message {
     color: red;
     font-weight: bold;
   }
   button {
-    margin-top: 5px; /* Reduced margin from container */
-    padding: 10px 20px;
-    font-size: 16px;
+    margin-top: 5px;
+    padding: 10px 15px; /* Slightly smaller padding for mobile */
+    font-size: 1em; /* Responsive font size */
     cursor: pointer;
     background-color: #4CAF50;
     color: white;
     border: none;
     border-radius: 5px;
     transition: background-color 0.2s ease-in-out;
+  }
+  @media (max-width: 450px) {
+    button {
+      padding: 8px 12px;
+      font-size: 0.9em;
+    }
   }
   button:hover {
     background-color: #45a049;
