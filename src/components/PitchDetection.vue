@@ -1,11 +1,11 @@
 <template>
     <div class="pitch-detection-container">
-      <h1>实时音高图表 (Vue 3 + AudioWorklet)</h1>
+      <h1>实时音高图表</h1>
   
       <p v-if="initializationError" class="error-message">错误: {{ initializationError }}</p>
       <p v-else-if="!isMicrophoneAllowed && !attemptedInitialization">请点击下方按钮并允许麦克风访问以开始检测。</p>
       <p v-else-if="!isMicrophoneAllowed && attemptedInitialization">麦克风访问被拒绝或失败。请检查浏览器权限并重试。</p>
-      <p v-else>{{ isProcessingAudio ? '正在检测音高...' : '检测已暂停。' }} 此版本旨在减少图表抖动。</p>
+      <p v-else>{{ isProcessingAudio ? '正在检测音高...' : '检测已暂停。' }}</p>
       
       <!-- **** MODIFICATION HERE: Removed inline style for width/height **** -->
       <div id="container" ref="chartContainerRef"> 
@@ -370,26 +370,18 @@ canvas {
 h1 {
   text-align: center; /* 文本在其块内居中 */
   margin: 5px 0; /* 减少上下margin */
-  font-size: 1.3em; /* 稍微减小字体大小 */
+  font-size: 1.2em; /* 稍微减小字体大小 */
 }
-@media (max-width: 450px) {
-  h1 {
-    font-size: 1.2em;
-  }
-}
+
 
 p {
   text-align: center; /* 文本在其块内居中 */
   margin-top: 5px;
   margin-bottom: 15px;
   max-width: 90vw; /* Ensure text also wraps nicely */
-  font-size: 1em;
+  font-size: 0.9em;
 }
-@media (max-width: 450px) {
-  p {
-    font-size: 0.9em;
-  }
-}
+
 .error-message {
   color: red;
   font-weight: bold;
@@ -397,7 +389,7 @@ p {
 button {
   margin-top: 5px;
   padding: 10px 15px; /* Slightly smaller padding for mobile */
-  font-size: 1em; /* Responsive font size */
+  font-size: 0.9em; /* Responsive font size */
   cursor: pointer;
   background-color: #4CAF50;
   color: white;
@@ -405,12 +397,7 @@ button {
   border-radius: 5px;
   transition: background-color 0.2s ease-in-out;
 }
-@media (max-width: 450px) {
-  button {
-    padding: 8px 12px;
-    font-size: 0.9em;
-  }
-}
+
 button:hover {
   background-color: #45a049;
 }
