@@ -29,21 +29,32 @@ const activeTab = ref('pitch')
   right: 0;
   display: flex;
   justify-content: space-around;
-  padding: 10px 0;
-  background: #fff;
-  box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
+  padding: 12px 0;
+  background: #f8f9fa;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+  z-index: 100;
 }
 
 .tab-bar button {
-  padding: 8px 16px;
+  padding: 10px 20px;
   border: none;
   background: none;
   cursor: pointer;
+  border-radius: 20px;
+  transition: all 0.3s ease;
+  font-size: 14px;
+  color: #555;
+}
+
+.tab-bar button:hover {
+  background: rgba(66, 185, 131, 0.1);
 }
 
 .tab-bar button.active {
-  color: #42b983;
-  font-weight: bold;
+  color: #fff;
+  background: #42b983;
+  font-weight: 500;
+  box-shadow: 0 2px 8px rgba(66, 185, 131, 0.3);
 }
 
 @media (min-width: 1024px) {
