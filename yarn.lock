@@ -1782,10 +1782,10 @@ muggle-string@^0.4.1:
   resolved "https://registry.yarnpkg.com/muggle-string/-/muggle-string-0.4.1.tgz#3b366bd43b32f809dc20659534dd30e7c8a0d328"
   integrity sha512-VNTrAak/KhO2i8dqqnqnAHOa3cYBwXEZe9h+D5h/1ZqFSTEFHdM65lR7RoIqq3tBBYavsOXV84NoHXZ0AkPyqQ==
 
-museaikit@^1.2.1:
-  version "1.2.1"
-  resolved "https://registry.yarnpkg.com/museaikit/-/museaikit-1.2.1.tgz#39b7e2e365cf924ecbc8ef86f3480f964f8ae42c"
-  integrity sha512-DdZWP96/F2hzxii+jKqAbu0tx+M2NPDkgmNyhyEDOM6oZg3xoXeBwfWknLSAaGR90aSUlMlnvznO5oZ6exQByA==
+museaikit@^1.2.2:
+  version "1.2.2"
+  resolved "https://registry.yarnpkg.com/museaikit/-/museaikit-1.2.2.tgz#4fe6fd0c2a605f14843869263503a91300c0f23d"
+  integrity sha512-TFysvcrlbO2Y1ZR0c8sRTfhr/Ql/vlN4lt4+lvciqZLk0nmyJ1sLOyzozYs7Hxee3b6UJixa7X8eTT74XyDklw==
   dependencies:
     "@tensorflow/tfjs" "^2.7.0"
     "@tensorflow/tfjs-backend-webgl" "^2.7.0"
