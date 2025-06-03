@@ -12,11 +12,11 @@
       </label>
       <br>
       <p><audio ref="filePlayerEl" controls hidden></audio></p>
-      <div v-if="isLoadingFile">
+      <div v-show="isLoadingFile">
         <p><b>Actual Transcription:</b> <code class="file">Loading...</code></p>
         <p><b>It Took:</b> <code class="file">Loading...</code></p>
       </div>
-      <div v-else>
+      <div v-show="!isLoadingFile">
         <p><b>Actual Transcription:</b></p>
         <div ref="fileResultsContainer" class="file-results-container"></div>
         <p><b>It Took:</b> <code class="file">{{ fileTimeText }}</code></p>
@@ -42,12 +42,12 @@
       <button @click="optimizeMidi" :disabled="!originalNs || isLoadingOptimize">Optimize MIDI</button>
       <button @click="resetParameters">Reset Parameters</button>
       <br>
-      <div v-if="isLoadingOptimize">
+      <div v-show="isLoadingOptimize">
         <p><audio ref="optimizePlayerEl" controls hidden></audio></p>
         <p><b>Actual Transcription:</b> <code class="optimize">Loading...</code></p>
         <p><b>It Took:</b> <code class="optimize">Loading...</code></p>
       </div>
-      <div v-else>
+      <div v-show="!isLoadingOptimize">
         <p><audio ref="optimizePlayerEl" controls hidden></audio></p>
         <p><b>Actual Transcription:</b></p>
         <div ref="optimizeResultsContainer" class="optimize-results-container"></div>
@@ -198,11 +198,15 @@ function writeNoteSeqs(
   writeVelocity = false // This param was in original, but not used for visualization here
 ) {
   const element = containerRef.value;
-  if (!element) return;
+  if (!element) {
+    console.error('Container element not found');
+    return;
+  }
 
   while (element.firstChild) {
     element.removeChild(element.firstChild);
   }
+
 
   seqs.forEach(seq => {
     const details = document.createElement('details');
