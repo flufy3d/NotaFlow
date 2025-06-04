@@ -1,7 +1,7 @@
 <template>
   <div class="audio-conversion">
-    <h1>MIDI Cleaner</h1>
-    <p>Optimize audio transcription results by merging fragmented notes and filtering short notes.</p>
+    <h1>音频转乐谱工具</h1>
+    <p>将音频文件或录音转换为乐谱，还能通过合并碎片化音符和过滤短音符来优化转录结果。</p>
 
     <h2>Process Audio File</h2>
     <p>You can use your own audio file for transcription:</p>
