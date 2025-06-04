@@ -211,37 +211,9 @@ function writeNoteSeqs(
   seqs.forEach(seq => {
     const details = document.createElement('details');
     const summary = document.createElement('summary');
-    summary.textContent = 'View NoteSequence Details & Player';
+    summary.textContent = 'View NoteSequence';
     details.appendChild(summary);
 
-    const seqText = document.createElement('span');
-    const isQuantized = mm.sequences.isQuantizedSequence(seq);
-    seqText.innerHTML = 'Notes: [' +
-      seq.notes
-        .map(n => {
-          let s = '{p:' + n.pitch + ' s:' +
-            (isQuantized ? n.quantizedStartStep : (n.startTime || 0).toPrecision(2));
-          const end = isQuantized ? n.quantizedEndStep : (n.endTime || 0).toPrecision(3);
-          if (end != null) {
-            s += ' e:' + end;
-          }
-          if (writeVelocity && n.velocity) { // check if velocity exists
-            s += ' v:' + n.velocity;
-          }
-          s += '}';
-          return s;
-        })
-        .join(', ') +
-      ']';
-    if (seq.totalTime) {
-        seqText.innerHTML += `<br/>Total Time: ${seq.totalTime.toFixed(2)}s`;
-    }
-    if (isQuantized && seq.totalQuantizedSteps) {
-        seqText.innerHTML += `<br/>Total Quantized Steps: ${seq.totalQuantizedSteps}`;
-    }
-
-
-    details.appendChild(seqText);
     details.appendChild(createPlayer(seq, useSoundFontPlayer));
     element.appendChild(details);
   });
