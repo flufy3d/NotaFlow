@@ -88,7 +88,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import * as mm from 'museaikit';
 import { saveAs } from 'file-saver';
 
@@ -134,6 +134,11 @@ const keySignatureOptions = [
   { value: 11, label: 'B大调' }
 ];
 
+watch(selectedKeySignature, (newVal, oldVal) => {
+  if (originalNs.value) {
+    optimizeMidi();
+  }
+});
 
 mm.logging.setVerbosity(mm.logging.Level.DEBUG); // Or use mm.logging.Level.WARN for less noise
 
