@@ -296,15 +296,9 @@ const optimizeMidi = () => {
   optimizeTimeText.value = '';
   if (optimizeResultsContainer.value) optimizeResultsContainer.value.innerHTML = '';
 
-
   const start = performance.now();
-  // Important: clone originalNs before cleaning, as cleanNoteSequence might modify in place or return a new one.
-  // The cleanNoteSequence function from @magenta/music is expected to be non-mutating for the input.
-  // However, let's be explicit about our intent if we were unsure.
-  // const nsToClean = mm.sequences.clone(originalNs.value);
-
   const cleanedNs = mm.cleanNoteSequence(
-    originalNs.value, // Pass the original directly
+    originalNs.value,
     minDuration.value,
     mergeThreshold.value,
     quantizeResolution.value
@@ -321,7 +315,12 @@ const optimizeMidi = () => {
   const jianpu = document.getElementById('jianpu') as HTMLDivElement;
   let jianpuSVGVisualizer = new mm.JianpuSVGVisualizer(cleanedNs, jianpu);
 
-  //create player
+  // 创建播放控制按钮
+  const playButton = document.createElement('button');
+  playButton.textContent = '播放乐谱';
+  playButton.style.margin = '10px 0';
+  
+  // 创建播放器
   const player = new mm.SoundFontPlayer(
     SOUNDFONT_URL,
     mm.Player.tone.Master, undefined, undefined, {
@@ -335,6 +334,28 @@ const optimizeMidi = () => {
     }
   });
 
+  // 添加播放/停止控制
+  playButton.addEventListener('click', () => {
+    if (player.isPlaying()) {
+      player.stop();
+      playButton.textContent = '播放乐谱';
+    } else {
+      player.start(cleanedNs)
+        .then(() => {
+          playButton.textContent = '停止';
+        })
+        .catch(err => {
+          console.error("播放错误:", err);
+          playButton.textContent = "播放错误";
+        });
+    }
+  });
+
+  // 将按钮添加到乐谱显示区域
+  const staffContainer = staff.parentElement;
+  if (staffContainer) {
+    staffContainer.insertBefore(playButton, staff);
+  }
 
   isLoadingOptimize.value = false;
 };
