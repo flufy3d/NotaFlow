@@ -57,6 +57,7 @@
 
     <h2>最终乐谱</h2>
     <section>
+      <button id="play-score-btn">播放乐谱</button>
       <div class="visualizer-container">
         <div id="staff"></div>
       </div>
@@ -289,6 +290,8 @@ const resetParameters = () => {
   quantizeResolution.value = 0.5;
 };
 
+
+
 const optimizeMidi = () => {
   if (!originalNs.value || !optimizeResultsContainer.value) return;
 
@@ -315,11 +318,6 @@ const optimizeMidi = () => {
   const jianpu = document.getElementById('jianpu') as HTMLDivElement;
   let jianpuSVGVisualizer = new mm.JianpuSVGVisualizer(cleanedNs, jianpu);
 
-  // 创建播放控制按钮
-  const playButton = document.createElement('button');
-  playButton.textContent = '播放乐谱';
-  playButton.style.margin = '10px 0';
-  
   // 创建播放器
   const player = new mm.SoundFontPlayer(
     SOUNDFONT_URL,
@@ -334,15 +332,21 @@ const optimizeMidi = () => {
     }
   });
 
+  // 创建播放控制按钮
+  const playButton = document.getElementById('play-score-btn');
+  playButton.textContent = '播放乐谱';
+
+  
   // 添加播放/停止控制
   playButton.addEventListener('click', () => {
     if (player.isPlaying()) {
       player.stop();
       playButton.textContent = '播放乐谱';
     } else {
+      playButton.textContent = '停止';
       player.start(cleanedNs)
         .then(() => {
-          playButton.textContent = '停止';
+          playButton.textContent = '播放乐谱';
         })
         .catch(err => {
           console.error("播放错误:", err);
@@ -351,11 +355,7 @@ const optimizeMidi = () => {
     }
   });
 
-  // 将按钮添加到乐谱显示区域
-  const staffContainer = staff.parentElement;
-  if (staffContainer) {
-    staffContainer.insertBefore(playButton, staff);
-  }
+
 
   isLoadingOptimize.value = false;
 };
@@ -483,5 +483,6 @@ details span {
     white-space: pre-wrap; /* Allow wrapping of long note sequences */
     word-break: break-all;
 }
+
 
 </style>
