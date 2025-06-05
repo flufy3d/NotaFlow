@@ -120,18 +120,18 @@ const quantizeResolution = ref(0.5);
 
 const selectedKeySignature = ref(0);
 const keySignatureOptions = [
-  { value: 0, label: 'C大调 (无升降号)' },
-  { value: 7, label: 'G大调 (1个升号)' },
-  { value: 2, label: 'D大调 (2个升号)' },
-  { value: 9, label: 'A大调 (3个升号)' },
-  { value: 4, label: 'E大调 (4个升号)' },
-  { value: 11, label: 'B大调 (5个升号)' },
-  { value: 5, label: 'F#大调 (6个升号)' },
-  { value: 10, label: '降G大调 (6个降号)' },
-  { value: 3, label: '降D大调 (5个降号)' },
-  { value: 8, label: '降A大调 (4个降号)' },
-  { value: 1, label: '降E大调 (3个降号)' },
-  { value: 6, label: '降B大调 (2个降号)' }
+  { value: 0, label: 'C大调' },
+  { value: 1, label: '#C大调/降D大调' },
+  { value: 2, label: 'D大调' },
+  { value: 3, label: '#D大调/降E大调' },
+  { value: 4, label: 'E大调' },
+  { value: 5, label: 'F大调' },
+  { value: 6, label: '#F大调/降G大调' },
+  { value: 7, label: 'G大调' },
+  { value: 8, label: '#G大调/降A大调' },
+  { value: 9, label: 'A大调' },
+  { value: 10, label: '#A大调/降B大调' },
+  { value: 11, label: 'B大调' }
 ];
 
 
