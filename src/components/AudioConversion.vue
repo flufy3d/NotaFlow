@@ -371,30 +371,35 @@ const optimizeMidi = () => {
   });
 
   // 创建播放控制按钮
-  const playButton = document.getElementById('play-score-btn');
-  playButton.textContent = '播放乐谱';
 
-  
-  // 添加播放/停止控制
-  playButton.addEventListener('click', () => {
+  const playButtonClickHandler = () => {
+    let btn = document.getElementById('play-score-btn');
     if (player.isPlaying()) {
       player.stop();
-      playButton.textContent = '播放乐谱';
+      btn.textContent = '播放乐谱';
     } else {
-      playButton.textContent = '停止';
+      console.log('start')
+      btn.textContent = '停止';
       player.start(cleanedNs)
         .then(() => {
-          playButton.textContent = '播放乐谱';
+          btn.textContent = '播放乐谱';
         })
         .catch(err => {
           console.error("播放错误:", err);
-          playButton.textContent = "播放错误";
+          btn.textContent = "播放错误";
         });
     }
-  });
+  };
 
+  const playButton = document.getElementById('play-score-btn');
+  if (playButton) {
+    playButton.replaceWith(playButton.cloneNode(true));
+    const newPlayButton = document.getElementById('play-score-btn');
+    newPlayButton.textContent = '播放乐谱';
+    newPlayButton.addEventListener('click', playButtonClickHandler);
+  }
 
-
+ 
   isLoadingOptimize.value = false;
 };
 
