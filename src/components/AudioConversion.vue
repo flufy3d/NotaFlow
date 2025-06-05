@@ -54,6 +54,24 @@
         <p><b>It Took:</b> <code class="optimize">{{ optimizeTimeText }}</code></p>
       </div>
     </section>
+
+    <h2>最终乐谱</h2>
+    <section>
+      <div class="visualizer-container">
+        <div id="staff"></div>
+      </div>
+      <div class="visualizer-container">
+        <div id="jianpu"></div>
+      </div>
+    </section>
+
+    <h2>结束</h2>
+    <section>
+      <p>
+      感谢您使用我们的工具。如果您有任何问题或反馈，请随时联系。
+      </p>
+    </section>
+
   </div>
 </template>
 
@@ -250,6 +268,7 @@ async function transcribeFromFile(blob: Blob) {
     
     writeTimer(fileTimeText, start);
     writeNoteSeqs(fileResultsContainer, [ns], true, true);
+
   } catch (error) {
     console.error("Error during transcription:", error);
     if (fileResultsContainer.value) {
@@ -293,6 +312,30 @@ const optimizeMidi = () => {
 
   writeTimer(optimizeTimeText, start);
   writeNoteSeqs(optimizeResultsContainer, [cleanedNs], true, true);
+
+  //staff
+  const staff = document.getElementById('staff') as HTMLDivElement;
+  let staffSVGVisualizer = new mm.StaffSVGVisualizer(cleanedNs, staff);
+
+  //jianpu
+  const jianpu = document.getElementById('jianpu') as HTMLDivElement;
+  let jianpuSVGVisualizer = new mm.JianpuSVGVisualizer(cleanedNs, jianpu);
+
+  //create player
+  const player = new mm.SoundFontPlayer(
+    SOUNDFONT_URL,
+    mm.Player.tone.Master, undefined, undefined, {
+    run: (note: mm.NoteSequence.Note) => {
+      jianpuSVGVisualizer.redraw(note);
+      staffSVGVisualizer.redraw(note);
+    },
+    stop: () => {
+      jianpuSVGVisualizer.clearActiveNotes();
+      staffSVGVisualizer.clearActiveNotes();
+    }
+  });
+
+
   isLoadingOptimize.value = false;
 };
 
