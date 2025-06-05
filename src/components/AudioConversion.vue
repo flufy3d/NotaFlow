@@ -58,9 +58,12 @@
     <h2>最终乐谱</h2>
     <section>
       <button id="play-score-btn">播放乐谱</button>
+      <br> 
+      <br>
       <div class="visualizer-container">
         <div id="staff"></div>
       </div>
+      <br>
       <div class="visualizer-container">
         <div id="jianpu"></div>
       </div>
