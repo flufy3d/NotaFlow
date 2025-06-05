@@ -378,7 +378,6 @@ const optimizeMidi = () => {
       player.stop();
       btn.textContent = '播放乐谱';
     } else {
-      console.log('start')
       btn.textContent = '停止';
       player.start(cleanedNs)
         .then(() => {
