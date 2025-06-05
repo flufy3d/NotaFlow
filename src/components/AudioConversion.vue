@@ -57,6 +57,14 @@
 
     <h2>最终乐谱</h2>
     <section>
+      <div class="key-signature-control">
+        <label for="key-signature-select">调式选择: </label>
+        <select id="key-signature-select" v-model="selectedKeySignature">
+          <option v-for="(key, index) in keySignatureOptions" :key="index" :value="key.value">
+            {{ key.label }}
+          </option>
+        </select>
+      </div>
       <button id="play-score-btn">播放乐谱</button>
       <br> 
       <br>
@@ -108,6 +116,24 @@ const isLoadingOptimize = ref(false);
 const minDuration = ref(0.1);
 const mergeThreshold = ref(0.08);
 const quantizeResolution = ref(0.5);
+
+
+const selectedKeySignature = ref(0);
+const keySignatureOptions = [
+  { value: 0, label: 'C大调 (无升降号)' },
+  { value: 7, label: 'G大调 (1个升号)' },
+  { value: 2, label: 'D大调 (2个升号)' },
+  { value: 9, label: 'A大调 (3个升号)' },
+  { value: 4, label: 'E大调 (4个升号)' },
+  { value: 11, label: 'B大调 (5个升号)' },
+  { value: 5, label: 'F#大调 (6个升号)' },
+  { value: 10, label: '降G大调 (6个降号)' },
+  { value: 3, label: '降D大调 (5个降号)' },
+  { value: 8, label: '降A大调 (4个降号)' },
+  { value: 1, label: '降E大调 (3个降号)' },
+  { value: 6, label: '降B大调 (2个降号)' }
+];
+
 
 mm.logging.setVerbosity(mm.logging.Level.DEBUG); // Or use mm.logging.Level.WARN for less noise
 
@@ -303,7 +329,7 @@ const optimizeMidi = () => {
   if (optimizeResultsContainer.value) optimizeResultsContainer.value.innerHTML = '';
 
   const start = performance.now();
-  const cleanedNs = mm.cleanNoteSequence(
+  let cleanedNs = mm.cleanNoteSequence(
     originalNs.value,
     minDuration.value,
     mergeThreshold.value,
@@ -312,6 +338,10 @@ const optimizeMidi = () => {
 
   writeTimer(optimizeTimeText, start);
   writeNoteSeqs(optimizeResultsContainer, [cleanedNs], true, true);
+
+
+  cleanedNs.keySignatures = [{ start: 0, key: selectedKeySignature.value }];
+
 
   //staff
   const staff = document.getElementById('staff') as HTMLDivElement;
