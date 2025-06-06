@@ -6,7 +6,13 @@
     <h2>1. 录制音频</h2>
     <p>点击“开始录音”，演奏一段旋律，然后点击“停止录音”以生成乐谱。</p>
     <section>
-      <button @click="toggleRecording" :disabled="isProcessing">
+      <!-- 录音按钮：添加了动态 class 用于样式切换 -->
+      <button 
+        @click="toggleRecording" 
+        :disabled="isProcessing"
+        class="record-btn"
+        :class="{ 'is-recording': isRecording }"
+      >
         {{ isRecording ? '停止录音' : '开始录音' }}
       </button>
       <div v-show="isProcessing" class="loading-indicator">
@@ -26,8 +32,9 @@
               </option>
             </select>
           </div>
-          <button id="play-score-btn">播放乐谱</button>
-          <button @click="downloadMidi">下载 MIDI</button>
+          <!-- 播放和下载按钮 -->
+          <button id="play-score-btn" class="action-btn">播放乐谱</button>
+          <button @click="downloadMidi" class="action-btn">下载 MIDI</button>
         </div>
         <br> 
         <div class="visualizer-container">
@@ -54,7 +61,8 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, watch } from 'vue';
+// 导入了 nextTick，用于解决DOM更新时序问题
+import { ref, watch, nextTick } from 'vue';
 import * as mm from 'museaikit';
 import { saveAs } from 'file-saver';
 
@@ -71,26 +79,25 @@ const mediaRecorder = ref<MediaRecorder | null>(null);
 
 const selectedKeySignature = ref(0);
 const keySignatureOptions = [
-  { value: 0, label: 'C大调' }, { value: 1, label: '#C大调/降D大调' },
-  { value: 2, label: 'D大调' }, { value: 3, label: '#D大调/降E大调' },
+  { value: 0, label: 'C大调' }, { value: 1, label: 'C♯/D♭大调' },
+  { value: 2, label: 'D大调' }, { value: 3, label: 'D♯/E♭大调' },
   { value: 4, label: 'E大调' }, { value: 5, label: 'F大调' },
-  { value: 6, label: '#F大调/降G大调' }, { value: 7, label: 'G大调' },
-  { value: 8, label: '#G大调/降A大调' }, { value: 9, label: 'A大调' },
-  { value: 10, label: '#A大调/降B大调' }, { value: 11, label: 'B大调' }
+  { value: 6, label: 'F♯/G♭大调' }, { value: 7, label: 'G大调' },
+  { value: 8, label: 'G♯/A♭大调' }, { value: 9, label: 'A大调' },
+  { value: 10, label: 'A♯/B♭大调' }, { value: 11, label: 'B大调' }
 ];
 
 mm.logging.setVerbosity(mm.logging.Level.WARN);
 
-// Watch for key signature changes to re-render the score
-watch(selectedKeySignature, (newVal) => {
+// 监视调式变化，重新渲染乐谱
+watch(selectedKeySignature, () => {
   if (finalCleanedNs.value) {
-    // Create a clone to modify without affecting the original cleaned sequence
     const nsToRender = mm.sequences.clone(finalCleanedNs.value);
     renderScore(nsToRender);
   }
 });
 
-// --- Core Logic ---
+// --- 核心逻辑 ---
 
 async function toggleRecording() {
   if (isRecording.value) {
@@ -113,9 +120,12 @@ async function toggleRecording() {
         stream.getTracks().forEach(track => track.stop());
       };
       
+      // *** 核心修改 1: 开始新录音时，重置状态 ***
+      finalCleanedNs.value = null;     // 清空旧乐谱
+      selectedKeySignature.value = 0;  // 默认设置为 C 大调
+      
       recorder.start();
       isRecording.value = true;
-      finalCleanedNs.value = null; // Clear previous score
     } catch (err) {
       console.error("Error accessing microphone:", err);
       alert("无法访问麦克风。请检查浏览器权限并确保在HTTPS环境下运行。");
@@ -132,14 +142,19 @@ async function processAudioBlob(blob: Blob) {
     oafA = new mm.OnsetsAndFrames(CKPT_URL);
     await oafA.initialize();
     
-    // 1. Transcribe
+    // 1. 转录
     const rawNs = await oafA.transcribeFromAudioFile(blob);
     
-    // 2. Clean with default parameters
+    // 2. 清理音符序列
     const cleanedNs = mm.cleanNoteSequence(rawNs, 0.1, 0.08, 0.5);
-    finalCleanedNs.value = cleanedNs; // Store for download and re-render
+    finalCleanedNs.value = cleanedNs;
     
-    // 3. Render the final score
+    // *** 核心修改 2: 等待DOM更新后再渲染 ***
+    // Vue 更新DOM是异步的。设置 finalCleanedNs 后，v-if 会让乐谱容器显示出来。
+    // 我们需要用 nextTick 等待这个过程完成，确保 #staff 和 #jianpu 元素存在。
+    await nextTick();
+    
+    // 3. 渲染最终乐谱
     renderScore(cleanedNs);
 
   } catch (error) {
@@ -155,18 +170,18 @@ async function processAudioBlob(blob: Blob) {
 function renderScore(ns: mm.INoteSequence) {
   if (!ns) return;
 
-  // Set key signature based on dropdown
+  // 根据下拉菜单设置调式
   ns.keySignatures = [{ key: selectedKeySignature.value, time: 0 }];
 
-  const staff = document.getElementById('staff') as HTMLDivElement;
-  const jianpu = document.getElementById('jianpu') as HTMLDivElement;
-  if (!staff || !jianpu) return;
+  const staffDiv = document.getElementById('staff') as HTMLDivElement;
+  const jianpuDiv = document.getElementById('jianpu') as HTMLDivElement;
+  if (!staffDiv || !jianpuDiv) return;
 
-  staff.innerHTML = '';
-  jianpu.innerHTML = '';
+  staffDiv.innerHTML = '';
+  jianpuDiv.innerHTML = '';
 
-  let staffViz = new mm.StaffSVGVisualizer(ns, staff);
-  let jianpuViz = new mm.JianpuSVGVisualizer(ns, jianpu);
+  let staffViz = new mm.StaffSVGVisualizer(ns, staffDiv);
+  let jianpuViz = new mm.JianpuSVGVisualizer(ns, jianpuDiv);
 
   const player = new mm.SoundFontPlayer(
     SOUNDFONT_URL, undefined, undefined, undefined, {
@@ -194,7 +209,6 @@ function renderScore(ns: mm.INoteSequence) {
 
   const playButton = document.getElementById('play-score-btn');
   if (playButton) {
-    // Replace the button to remove old event listeners
     const newPlayButton = playButton.cloneNode(true);
     playButton.parentNode?.replaceChild(newPlayButton, playButton);
     newPlayButton.addEventListener('click', playButtonClickHandler);
@@ -210,7 +224,6 @@ function downloadMidi() {
     alert('没有可供下载的乐谱。');
   }
 }
-
 </script>
 
 <style scoped>
@@ -251,14 +264,29 @@ function downloadMidi() {
   cursor: not-allowed;
 }
 
-button[v-on\:click="toggleRecording"] {
+/* *** 核心修改 3: 优化按钮样式 *** */
+/* 录音按钮默认状态 (蓝色) */
+.record-btn {
   background-color: #007bff;
 }
-button[v-on\:click="toggleRecording"]:hover {
+.record-btn:hover:not(:disabled) {
   background-color: #0056b3;
 }
-.is-recording { /* A class to indicate recording state if needed */
-  background-color: #dc3545 !important;
+
+/* 录音按钮在录音中状态 (红色) */
+.record-btn.is-recording {
+  background-color: #dc3545;
+}
+.record-btn.is-recording:hover:not(:disabled) {
+  background-color: #c82333;
+}
+
+/* 其他操作按钮 (绿色) */
+.action-btn {
+  background-color: #28a745;
+}
+.action-btn:hover:not(:disabled) {
+  background-color: #1e7e34;
 }
 
 .controls-container {
@@ -275,17 +303,9 @@ button[v-on\:click="toggleRecording"]:hover {
   font-size: 14px;
 }
 
-#play-score-btn, button[v-on\:click="downloadMidi"] {
-  background-color: #28a745;
-}
-#play-score-btn:hover, button[v-on\:click="downloadMidi"]:hover {
-  background-color: #1e7e34;
-}
-
 .loading-indicator {
   margin-top: 15px;
   color: #555;
-  font-weight: bold;
 }
 
 .visualizer-container {
@@ -297,7 +317,8 @@ button[v-on\:click="toggleRecording"]:hover {
   border-radius: 5px;
 }
 
-.visualizer-container svg {
+/* 确保SVG填满容器高度 */
+.visualizer-container > div > svg {
   height: 100%;
 }
 </style>
