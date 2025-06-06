@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import PitchDetection from './components/PitchDetection.vue'
 import AudioConversion from './components/AudioConversion.vue'
+import MicConversion from './components/MicConversion.vue'
 import AboutPage from './components/AboutPage.vue'
 
 const activeTab = ref('pitch')
@@ -11,11 +12,13 @@ const activeTab = ref('pitch')
   <main>
     <PitchDetection v-if="activeTab === 'pitch'" />
     <AudioConversion v-if="activeTab === 'audio'" />
+    <MicConversion v-if="activeTab === 'mic'" />
     <AboutPage v-if="activeTab === 'about'" />
   </main>
 
   <nav class="tab-bar">
     <button @click="activeTab = 'pitch'" :class="{ active: activeTab === 'pitch' }">音高检测</button>
+    <button @click="activeTab = 'mic'" :class="{ active: activeTab === 'mic' }">麦克风转换</button>
     <button @click="activeTab = 'audio'" :class="{ active: activeTab === 'audio' }">音频转换</button>
     <button @click="activeTab = 'about'" :class="{ active: activeTab === 'about' }">关于</button>
   </nav>
