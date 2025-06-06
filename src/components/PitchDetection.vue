@@ -214,7 +214,7 @@
   
         audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
         
-        await audioContext.audioWorklet.addModule('/pitch-processor.js'); 
+        await audioContext.audioWorklet.addModule('/NotaFlow/pitch-processor.js'); 
         
         mediaStreamSource = audioContext.createMediaStreamSource(mediaStream);
         workletNode = new AudioWorkletNode(audioContext, 'pitch-processor');
